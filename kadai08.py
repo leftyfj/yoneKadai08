@@ -114,27 +114,6 @@ def main():
       res = pool.submit(scraping_one_page, TARGET_SITE, driver, paramaters_search, i)
       df = res.result()
       df_total = df_total.append(df)
-  
-  
-  # print(df_total.tail())
-  # print(len(df_total))
-  
-  
-  
-  #pool = ThreadPoolExecutor(max_workers=3, thread_name_prefix="scraping_one_page")
-  # with ThreadPoolExecutor(max_workers=3)
-  #for i in range(1, total_pages + 1):
-    # res = pool.submit(scraping_one_page, TARGET_SITE, driver, paramaters_search, i)
-   # pool.submit(scraping_one_page, TARGET_SITE, driver, paramaters_search, i)
-    # df = res.result()
-    # print(df.head())
-    # thread_name = 't' + str(i)
-    # thread_name= threading.Thread(target=scraping_one_page(TARGET_SITE,driver, paramaters_search, i))
-    # thread_name.start()
-    # thread_name.join()
-  #   pool.submit(scraping_one_page(TARGET_SITE,driver, paramaters_search, i))
- # pool.shutdown()
-  
 
   driver.quit()
   
@@ -145,5 +124,4 @@ def main():
 
      
 if __name__ == "__main__":
-
   main()
