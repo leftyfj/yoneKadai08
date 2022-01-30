@@ -1,9 +1,9 @@
 import os
-import threading 
-from selenium.webdriver import Chrome, ChromeOptions 
-from selenium.webdriver.chrome.service import Service 
+import threading
+from concurrent.futures import ThreadPoolExecutor
 from selenium.webdriver.common.by import By 
-from webdriver_manager.chrome import ChromeDriverManager 
+
+import datetime
 import time 
 import pandas as pd
 import traceback
@@ -28,7 +28,6 @@ def calc_total_pages(driver, keyword, ITEMS_PER_PAGE):
   
   return page
 
-
 #URLに付加する検索キーワードを生成する関数
 def make_paramaters(words):
     word_list = words.split()
@@ -43,8 +42,6 @@ def make_paramaters(words):
       count += 1
     return words_search
 
-
-
 def find_table_col_by_header_name(th_elms, td_elms, target:str):
   for th_elm, td_elm in zip(th_elms, td_elms):
     if th_elm.text == target:
@@ -55,7 +52,6 @@ def find_table_col_by_header_name(th_elms, td_elms, target:str):
 
 def scraping_one_page(TARGET_SITE, driver, paramaters_search, page_number):
   df = pd.DataFrame()
-  
   try:
     URL = TARGET_SITE + 'list/' + paramaters_search + '/pg' + str(page_number) + '/'
     print(URL)
@@ -80,11 +76,13 @@ def scraping_one_page(TARGET_SITE, driver, paramaters_search, page_number):
         "初年度年収": first_year_fee }, ignore_index=True)
   except:
     print(traceback.format_exc())
+     
+  return df
+
+def save_data_in_csv_file(data, path):
+  os.makedirs(os.path.dirname(path), exist_ok=True)
+  data.to_csv(path, index=False, encoding='utf_8_sig')
   
-  print(df)        
-  #return temp_list
-
-
 def main():
   TARGET_SITE = "https://tenshoku.mynavi.jp/"
   ITEMS_PER_PAGE = 50
@@ -101,20 +99,50 @@ def main():
 
   #検索キーワードを入力
   #keyword = input('検索したいキーワードを入力して下さい。>>>')
-  keyword = '新宿区 Python'
+  keyword = '渋谷区'
   
  # 検索件数を調べページ数を計算する
   total_pages = calc_total_pages(driver, keyword, ITEMS_PER_PAGE)
     
   #パラメーターを生成する
   paramaters_search = make_paramaters(keyword)
-  for i in range(1, total_pages + 1):
-    t= threading.Thread(target=scraping_one_page(TARGET_SITE,driver, paramaters_search, i))
-    t.start()
+  
+  #一度に実行できるスレッドを5つまでとする
+  df_total = pd.DataFrame()
+  with ThreadPoolExecutor(max_workers=3, thread_name_prefix="scraping_one_page") as pool:
+    for i in range(1, total_pages + 1):
+      res = pool.submit(scraping_one_page, TARGET_SITE, driver, paramaters_search, i)
+      df = res.result()
+      df_total = df_total.append(df)
+  
+  
+  # print(df_total.tail())
+  # print(len(df_total))
+  
+  
+  
+  #pool = ThreadPoolExecutor(max_workers=3, thread_name_prefix="scraping_one_page")
+  # with ThreadPoolExecutor(max_workers=3)
+  #for i in range(1, total_pages + 1):
+    # res = pool.submit(scraping_one_page, TARGET_SITE, driver, paramaters_search, i)
+   # pool.submit(scraping_one_page, TARGET_SITE, driver, paramaters_search, i)
+    # df = res.result()
+    # print(df.head())
+    # thread_name = 't' + str(i)
+    # thread_name= threading.Thread(target=scraping_one_page(TARGET_SITE,driver, paramaters_search, i))
+    # thread_name.start()
+    # thread_name.join()
+  #   pool.submit(scraping_one_page(TARGET_SITE,driver, paramaters_search, i))
+ # pool.shutdown()
   
 
   driver.quit()
-  # df.to_csv('res20229121_3.csv', encoding='utf-8_sig')     
+  
+  current_datetime = datetime.datetime.now().strftime('%Y-%m-%d_%H_%M_%S')
+  search_file_path = f'./search/mynav_{keyword}_{current_datetime}.csv'
+  os.makedirs(os.path.dirname(search_file_path), exist_ok=True)
+  save_data_in_csv_file(df_total, search_file_path)
+
      
 if __name__ == "__main__":
 
